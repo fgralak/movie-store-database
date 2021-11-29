@@ -1,0 +1,229 @@
+drop index kli_idx1;
+create index kli_idx1 on klienci(id_klienta ,nazwisko, imie);
+drop index fil_idx2;
+create index fil_idx2 on filmy(id_filmu, tytul, gatunek);
+
+alter index kli_idx1 visible;
+alter index fil_idx2 visible;
+
+
+--hash join
+
+Plan hash value: 2331331489
+ 
+------------------------------------------------------------------------------------
+| Id  | Operation             | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |            |   772 | 24704 |     9   (0)| 00:00:01 |
+|*  1 |  HASH JOIN            |            |   772 | 24704 |     9   (0)| 00:00:01 |
+|   2 |   INDEX FAST FULL SCAN| KLI_IDX1   |   300 |  5700 |     2   (0)| 00:00:01 |
+|*  3 |   TABLE ACCESS FULL   | ZAMOWIENIA |   772 | 10036 |     7   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - access("Z"."ID_KLIENTA"="K"."ID_KLIENTA")
+   3 - filter("Z"."NALEZNOSC"<=1000 AND "Z"."NALEZNOSC">=500)
+
+
+Plan hash value: 2208904666
+ 
+-------------------------------------------------------------------------------------
+| Id  | Operation              | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT       |            |   772 | 24704 |    11  (19)| 00:00:01 |
+|   1 |  MERGE JOIN            |            |   772 | 24704 |    11  (19)| 00:00:01 |
+|   2 |   SORT JOIN            |            |   300 |  5700 |     3  (34)| 00:00:01 |
+|   3 |    INDEX FAST FULL SCAN| KLI_IDX1   |   300 |  5700 |     2   (0)| 00:00:01 |
+|*  4 |   SORT JOIN            |            |   772 | 10036 |     8  (13)| 00:00:01 |
+|*  5 |    TABLE ACCESS FULL   | ZAMOWIENIA |   772 | 10036 |     7   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   4 - access("Z"."ID_KLIENTA"="K"."ID_KLIENTA")
+       filter("Z"."ID_KLIENTA"="K"."ID_KLIENTA")
+   5 - filter("Z"."NALEZNOSC"<=1000 AND "Z"."NALEZNOSC">=500)
+ 
+Hint Report (identified by operation id / Query Block Name / Object Alias):
+Total hints for statement: 1 (U - Unused (1))
+---------------------------------------------------------------------------
+ 
+   3 -  SEL$58A6D7F6 / K@SEL$1
+         U -  use_merge(z, k)
+
+
+Plan hash value: 1515519280
+ 
+------------------------------------------------------------------------------------
+| Id  | Operation             | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |            |   772 | 24704 |   431   (1)| 00:00:01 |
+|   1 |  NESTED LOOPS         |            |   772 | 24704 |   431   (1)| 00:00:01 |
+|*  2 |   TABLE ACCESS FULL   | ZAMOWIENIA |   772 | 10036 |     7   (0)| 00:00:01 |
+|*  3 |   INDEX FAST FULL SCAN| KLI_IDX1   |     1 |    19 |     1   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("Z"."NALEZNOSC"<=1000 AND "Z"."NALEZNOSC">=500)
+   3 - filter("Z"."ID_KLIENTA"="K"."ID_KLIENTA")
+ 
+Hint Report (identified by operation id / Query Block Name / Object Alias):
+Total hints for statement: 1 (U - Unused (1))
+---------------------------------------------------------------------------
+ 
+   2 -  SEL$58A6D7F6 / Z@SEL$1
+         U -  use_nl(z, k)
+
+
+--nested loops
+
+Plan hash value: 303403114
+ 
+-------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |            |    43 |  4085 |     3   (0)| 00:00:01 |
+|   1 |  NESTED LOOPS                |            |    43 |  4085 |     3   (0)| 00:00:01 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| GATUNEK    |     1 |    64 |     1   (0)| 00:00:01 |
+|*  3 |    INDEX UNIQUE SCAN         | GATUNEK_PK |     1 |       |     0   (0)| 00:00:01 |
+|*  4 |   INDEX FAST FULL SCAN       | FIL_IDX2   |    43 |  1333 |     2   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   3 - access("G"."NAZWA"='Komedia')
+   4 - filter("F"."GATUNEK"='Komedia')
+
+
+Plan hash value: 4203661804
+ 
+-------------------------------------------------------------------------------------------
+| Id  | Operation                    | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT             |            |   250 | 23750 |     5  (20)| 00:00:01 |
+|   1 |  MERGE JOIN                  |            |   250 | 23750 |     5  (20)| 00:00:01 |
+|   2 |   TABLE ACCESS BY INDEX ROWID| GATUNEK    |     8 |   512 |     2   (0)| 00:00:01 |
+|   3 |    INDEX FULL SCAN           | GATUNEK_PK |     8 |       |     1   (0)| 00:00:01 |
+|*  4 |   SORT JOIN                  |            |   250 |  7750 |     3  (34)| 00:00:01 |
+|   5 |    INDEX FAST FULL SCAN      | FIL_IDX2   |   250 |  7750 |     2   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   4 - access("F"."GATUNEK"="G"."NAZWA")
+       filter("F"."GATUNEK"="G"."NAZWA")
+ 
+Hint Report (identified by operation id / Query Block Name / Object Alias):
+Total hints for statement: 1 (U - Unused (1))
+---------------------------------------------------------------------------
+ 
+   2 -  SEL$58A6D7F6 / G@SEL$1
+         U -  use_merge(f, g)
+
+
+Plan hash value: 4183929464
+ 
+----------------------------------------------------------------------------------
+| Id  | Operation             | Name     | Rows  | Bytes | Cost (%CPU)| Time     |
+----------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |          |   250 | 23750 |     5   (0)| 00:00:01 |
+|*  1 |  HASH JOIN            |          |   250 | 23750 |     5   (0)| 00:00:01 |
+|   2 |   TABLE ACCESS FULL   | GATUNEK  |     8 |   512 |     3   (0)| 00:00:01 |
+|   3 |   INDEX FAST FULL SCAN| FIL_IDX2 |   250 |  7750 |     2   (0)| 00:00:01 |
+----------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   1 - access("F"."GATUNEK"="G"."NAZWA")
+ 
+Hint Report (identified by operation id / Query Block Name / Object Alias):
+Total hints for statement: 1 (U - Unused (1))
+---------------------------------------------------------------------------
+ 
+   2 -  SEL$58A6D7F6 / G@SEL$1
+         U -  use_hash(f, g)
+
+
+--merge join
+
+Plan hash value: 2208904666
+ 
+-------------------------------------------------------------------------------------
+| Id  | Operation              | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+-------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT       |            |   115K|  3606K|    12  (25)| 00:00:01 |
+|   1 |  MERGE JOIN            |            |   115K|  3606K|    12  (25)| 00:00:01 |
+|   2 |   SORT JOIN            |            |   300 |  5700 |     3  (34)| 00:00:01 |
+|   3 |    INDEX FAST FULL SCAN| KLI_IDX1   |   300 |  5700 |     2   (0)| 00:00:01 |
+|*  4 |   SORT JOIN            |            |   772 | 10036 |     8  (13)| 00:00:01 |
+|*  5 |    TABLE ACCESS FULL   | ZAMOWIENIA |   772 | 10036 |     7   (0)| 00:00:01 |
+-------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   4 - access("Z"."ID_KLIENTA">"K"."ID_KLIENTA")
+       filter("Z"."ID_KLIENTA">"K"."ID_KLIENTA")
+   5 - filter("Z"."NALEZNOSC"<=1000 AND "Z"."NALEZNOSC">=500)
+
+
+Plan hash value: 1515519280
+ 
+------------------------------------------------------------------------------------
+| Id  | Operation             | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |            |   115K|  3606K|   431   (1)| 00:00:01 |
+|   1 |  NESTED LOOPS         |            |   115K|  3606K|   431   (1)| 00:00:01 |
+|*  2 |   TABLE ACCESS FULL   | ZAMOWIENIA |   772 | 10036 |     7   (0)| 00:00:01 |
+|*  3 |   INDEX FAST FULL SCAN| KLI_IDX1   |   150 |  2850 |     1   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("Z"."NALEZNOSC"<=1000 AND "Z"."NALEZNOSC">=500)
+   3 - filter("Z"."ID_KLIENTA">"K"."ID_KLIENTA")
+ 
+Hint Report (identified by operation id / Query Block Name / Object Alias):
+Total hints for statement: 1 (U - Unused (1))
+---------------------------------------------------------------------------
+ 
+   2 -  SEL$58A6D7F6 / Z@SEL$1
+         U -  use_nl(z, k)
+
+-- nie da sie uzyskac planu hash join, ze wzgledu na zastosowanie nierownosci w warunku zlaczenia
+
+Plan hash value: 1515519280
+ 
+------------------------------------------------------------------------------------
+| Id  | Operation             | Name       | Rows  | Bytes | Cost (%CPU)| Time     |
+------------------------------------------------------------------------------------
+|   0 | SELECT STATEMENT      |            |   115K|  3606K|   431   (1)| 00:00:01 |
+|   1 |  NESTED LOOPS         |            |   115K|  3606K|   431   (1)| 00:00:01 |
+|*  2 |   TABLE ACCESS FULL   | ZAMOWIENIA |   772 | 10036 |     7   (0)| 00:00:01 |
+|*  3 |   INDEX FAST FULL SCAN| KLI_IDX1   |   150 |  2850 |     1   (0)| 00:00:01 |
+------------------------------------------------------------------------------------
+ 
+Predicate Information (identified by operation id):
+---------------------------------------------------
+ 
+   2 - filter("Z"."NALEZNOSC"<=1000 AND "Z"."NALEZNOSC">=500)
+   3 - filter("Z"."ID_KLIENTA">"K"."ID_KLIENTA")
+ 
+Hint Report (identified by operation id / Query Block Name / Object Alias):
+Total hints for statement: 2 (U - Unused (2))
+---------------------------------------------------------------------------
+ 
+   2 -  SEL$58A6D7F6 / Z@SEL$1
+         U -  use_hash(z, k)
+ 
+   3 -  SEL$58A6D7F6 / K@SEL$1
+         U -  use_hash(z, k)
